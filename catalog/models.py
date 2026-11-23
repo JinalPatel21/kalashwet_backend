@@ -6,6 +6,7 @@ class Category(TimeStampedModel):
     slug = models.SlugField(max_length=100, unique=True)
     name = models.CharField(max_length=100)
     image = models.CharField(max_length=500, blank=True, null=True)
+    image_file = models.ImageField(upload_to='categories/', blank=True, null=True)
 
     class Meta:
         verbose_name_plural = 'Categories'
@@ -24,9 +25,43 @@ class Collection(TimeStampedModel):
     name = models.CharField(max_length=100)
     tagline = models.CharField(max_length=255, blank=True, default='')
     image = models.CharField(max_length=500, blank=True, null=True)
+    image_file = models.ImageField(upload_to='collections/', blank=True, null=True)
 
     class Meta:
         ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class HomeBanner(TimeStampedModel):
+    title = models.CharField(max_length=160)
+    subtitle = models.CharField(max_length=300, blank=True, default='')
+    cta = models.CharField(max_length=60, blank=True, default='Shop now')
+    link = models.CharField(max_length=500, blank=True, default='/jewellery')
+    image = models.ImageField(upload_to='banners/')
+    show_on_home = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', '-created_at']
+        verbose_name = 'Home banner'
+        verbose_name_plural = 'Home banners'
+
+    def __str__(self):
+        return self.title
+
+
+class DiamondCut(TimeStampedModel):
+    name = models.CharField(max_length=80)
+    image = models.ImageField(upload_to='diamond-cuts/')
+    show_on_home = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
 
     def __str__(self):
         return self.name
@@ -52,6 +87,10 @@ class Product(TimeStampedModel):
     sizes_available = models.BooleanField(default=True)
     images = models.JSONField(default=list, blank=True)
     certifications = models.JSONField(default=list, blank=True)  # ["BIS Hallmark", "IGI"]
+    height_mm = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    width_mm = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    depth_mm = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    package_contents = models.CharField(max_length=255, blank=True, default='')
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -59,6 +98,103 @@ class Product(TimeStampedModel):
 
     def __str__(self):
         return self.name
+
+
+class ProductMedia(TimeStampedModel):
+    class Kind(models.TextChoices):
+        PRODUCT = 'product', 'Product image'
+        LIFESTYLE = 'lifestyle', 'Lifestyle image'
+        DIMENSIONS = 'dimensions', 'Dimensions image'
+        PACKAGING = 'packaging', 'Packaging image'
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='gallery')
+    image = models.ImageField(upload_to='products/gallery/', max_length=255)
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.PRODUCT)
+    alt_text = models.CharField(max_length=160, blank=True, default='')
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'created_at']
+        verbose_name = 'Product gallery image'
+        verbose_name_plural = 'Product gallery images'
+
+    def __str__(self):
+        return f'{self.product.name} - {self.get_kind_display()}'
+
+
+class FeaturedProduct(TimeStampedModel):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='home_featured_entries')
+    image = models.ImageField(upload_to='featured-products/')
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', '-created_at']
+
+    def __str__(self):
+        return f'Featured: {self.product.name}'
+
+
+class GiftGuide(TimeStampedModel):
+    title = models.CharField(max_length=80)
+    image = models.ImageField(upload_to='gift-guides/')
+    cta = models.CharField(max_length=60, default='Shop now')
+    link = models.CharField(max_length=500, default='/jewellery')
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'title']
+
+    def __str__(self):
+        return self.title
+
+
+class JewelleryVideo(TimeStampedModel):
+    title = models.CharField(max_length=120)
+    video = models.FileField(upload_to='jewellery-videos/', max_length=255)
+    thumbnail = models.ImageField(upload_to='jewellery-video-thumbnails/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'title']
+        verbose_name = 'Jewellery video'
+        verbose_name_plural = 'Jewellery videos'
+
+    def __str__(self):
+        return self.title
+
+
+class FounderProfile(TimeStampedModel):
+    name = models.CharField(max_length=120, default='Dixit Vithani')
+    role = models.CharField(max_length=80, default='Founder')
+    quote = models.CharField(max_length=255, blank=True, default='')
+    story = models.TextField(blank=True, default='')
+    image = models.ImageField(upload_to='founder/', max_length=255)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Founder profile'
+        verbose_name_plural = 'Founder profile'
+
+    def __str__(self):
+        return self.name
+
+
+class LatestInsight(TimeStampedModel):
+    title = models.CharField(max_length=160)
+    excerpt = models.CharField(max_length=300, blank=True, default='')
+    image = models.ImageField(upload_to='insights/', max_length=255)
+    link = models.CharField(max_length=500, blank=True, default='/jewellery')
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', '-created_at']
+
+    def __str__(self):
+        return self.title
 
 
 class Variant(TimeStampedModel):

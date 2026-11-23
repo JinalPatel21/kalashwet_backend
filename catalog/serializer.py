@@ -1,21 +1,38 @@
 from rest_framework import serializers
 from kalashwet_backend.setting.serializer import MongoModelSerializer
 from pricing.services import compute_variant_price
-from .models import Category, Collection, Product, Variant, Stone
+from .models import Category, Collection, Product, ProductMedia, Variant, Stone
 
 
 class CategorySerializer(MongoModelSerializer):
     product_count = serializers.IntegerField(read_only=True)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
         fields = ['id', 'slug', 'name', 'image', 'product_count']
 
+    def get_image(self, obj):
+        if obj.image_file:
+            url = obj.image_file.url
+            request = self.context.get('request')
+            return request.build_absolute_uri(url) if request else url
+        return obj.image
+
 
 class CollectionSerializer(MongoModelSerializer):
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = Collection
         fields = ['id', 'slug', 'name', 'tagline', 'image']
+
+    def get_image(self, obj):
+        if obj.image_file:
+            url = obj.image_file.url
+            request = self.context.get('request')
+            return request.build_absolute_uri(url) if request else url
+        return obj.image
 
 
 class StoneSerializer(MongoModelSerializer):
@@ -24,6 +41,12 @@ class StoneSerializer(MongoModelSerializer):
     class Meta:
         model = Stone
         fields = ['type', 'count', 'carat', 'clarity', 'color', 'shape']
+
+
+class ProductMediaSerializer(MongoModelSerializer):
+    class Meta:
+        model = ProductMedia
+        fields = ['id', 'image', 'kind', 'alt_text']
 
 
 class VariantSerializer(MongoModelSerializer):
@@ -56,6 +79,7 @@ class VariantSerializer(MongoModelSerializer):
 
 class ProductSummarySerializer(MongoModelSerializer):
     category = serializers.CharField(source='category.slug')
+    images = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
     mrp = serializers.SerializerMethodField()
     metal = serializers.SerializerMethodField()
@@ -84,6 +108,14 @@ class ProductSummarySerializer(MongoModelSerializer):
             obj._cheapest_variant = cheapest
         return obj._cheapest_variant
 
+    def get_images(self, obj):
+        uploaded = list(obj.gallery.all())
+        if uploaded:
+            request = self.context.get('request')
+            urls = [image.image.url for image in uploaded]
+            return [request.build_absolute_uri(url) for url in urls] if request else urls
+        return obj.images
+
     def get_price(self, obj):
         v = self._get_cheapest_variant(obj)
         return getattr(v, '_computed_price', 0) if v else 0
@@ -105,9 +137,11 @@ class ProductDetailSerializer(ProductSummarySerializer):
     collection = serializers.CharField(source='collection.slug', allow_null=True)
     variants = VariantSerializer(many=True, read_only=True)
     stones = StoneSerializer(many=True, read_only=True)
+    gallery = ProductMediaSerializer(many=True, read_only=True)
 
     class Meta(ProductSummarySerializer.Meta):
         fields = ProductSummarySerializer.Meta.fields + [
             'description', 'collection', 'variants', 'stones',
-            'certifications', 'sizes_available'
+            'certifications', 'sizes_available', 'height_mm', 'width_mm',
+            'depth_mm', 'package_contents', 'gallery'
         ]
