@@ -1,5 +1,12 @@
+import os
+import uuid
 from django.db import models
 from user.models import TimeStampedModel
+
+
+def product_gallery_upload_to(instance, filename):
+    extension = os.path.splitext(filename)[1].lower()[:10]
+    return f'products/gallery/{uuid.uuid4().hex}{extension}'
 
 
 class Category(TimeStampedModel):
@@ -108,7 +115,7 @@ class ProductMedia(TimeStampedModel):
         PACKAGING = 'packaging', 'Packaging image'
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='gallery')
-    image = models.ImageField(upload_to='products/gallery/', max_length=255)
+    image = models.ImageField(upload_to=product_gallery_upload_to, max_length=255)
     kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.PRODUCT)
     alt_text = models.CharField(max_length=160, blank=True, default='')
     sort_order = models.PositiveIntegerField(default=0)
@@ -192,6 +199,78 @@ class LatestInsight(TimeStampedModel):
 
     class Meta:
         ordering = ['sort_order', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class BrandDifference(TimeStampedModel):
+    title = models.CharField(max_length=140)
+    subtitle = models.CharField(max_length=240, blank=True, default='')
+    image = models.ImageField(upload_to='brand-differences/', max_length=255)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'title']
+
+    def __str__(self):
+        return self.title
+
+
+class InstagramProfile(TimeStampedModel):
+    handle = models.CharField(max_length=100, default='@kalashwet')
+    profile_url = models.URLField(max_length=300, blank=True, default='')
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Instagram profile'
+        verbose_name_plural = 'Instagram profile'
+
+    def __str__(self):
+        return self.handle
+
+
+class InstagramPost(TimeStampedModel):
+    image = models.ImageField(upload_to='instagram/', max_length=255)
+    alt_text = models.CharField(max_length=160, blank=True, default='')
+    post_url = models.URLField(max_length=300, blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', '-created_at']
+
+    def __str__(self):
+        return self.alt_text or f'Instagram post {self.pk}'
+
+
+class StoreFAQ(TimeStampedModel):
+    question = models.CharField(max_length=240)
+    answer = models.TextField()
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+        verbose_name = 'Store FAQ'
+        verbose_name_plural = 'Store FAQs'
+
+    def __str__(self):
+        return self.question
+
+
+class NavigationFeature(TimeStampedModel):
+    eyebrow = models.CharField(max_length=80, default='The Kalashwet edit')
+    title = models.CharField(max_length=120, default='Made to be treasured')
+    cta = models.CharField(max_length=60, default='Discover more')
+    link = models.CharField(max_length=500, default='/jewellery')
+    image = models.ImageField(upload_to='navigation/', max_length=255)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Navigation feature'
+        verbose_name_plural = 'Navigation feature'
 
     def __str__(self):
         return self.title

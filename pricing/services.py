@@ -1,4 +1,4 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 GST_RATE = Decimal('0.03')  # 3% GST on jewellery in India
 
@@ -18,6 +18,36 @@ def get_metal_rate(purity: str) -> Decimal:
     if rate_obj:
         return Decimal(rate_obj.rate_per_gram)
     return DEFAULT_RATES.get(purity, Decimal('10000'))
+
+
+def get_shipping_fee() -> Decimal:
+    """Return the single admin-managed delivery fee applied store-wide."""
+    from .models import StoreShippingSettings
+    settings = StoreShippingSettings.objects.filter(key='default').first()
+    return Decimal(settings.shipping_fee) if settings else Decimal('0')
+
+
+def evaluate_coupon(code: str, subtotal) -> tuple[object, int]:
+    """Validate a live coupon and compute its discount from the server subtotal."""
+    from .models import Coupon
+    normalized_code = str(code or '').strip().upper()
+    coupon = Coupon.objects.filter(code=normalized_code, is_active=True).first()
+    if not coupon:
+        raise ValueError('This coupon is invalid or inactive.')
+    try:
+        amount = Decimal(str(subtotal))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError('Could not calculate this coupon for the order.')
+    if amount < Decimal(coupon.minimum_order):
+        raise ValueError(f'This coupon requires a minimum order of ₹{coupon.minimum_order:.0f}.')
+    value = Decimal(coupon.value)
+    discount = amount * value / Decimal('100') if coupon.discount_type == Coupon.DiscountType.PERCENTAGE else value
+    if coupon.maximum_discount is not None:
+        discount = min(discount, Decimal(coupon.maximum_discount))
+    discount = min(discount, amount).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+    if discount <= 0:
+        raise ValueError('This coupon does not apply to this order.')
+    return coupon, int(discount)
 
 
 def compute_variant_price(variant):

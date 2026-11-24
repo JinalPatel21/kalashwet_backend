@@ -1,0 +1,18 @@
+KALASHWET — ORDER UPDATE
+
+Hello {{ customer_name }}, {{ intro }}
+
+Order number: {{ order.number }}
+Current status: {{ status_label }}
+Payment: {{ payment_label }}
+Order total: {{ total_display }}
+
+ORDER ITEMS
+{% for item in items %}- {{ item.name }} × {{ item.quantity }} ({{ item.variant_description }}) — {{ item.line_total_display }}
+{% endfor %}
+DELIVERY ADDRESS
+{% for line in address_lines %}{{ line }}
+{% empty %}Address not available
+{% endfor %}
+
+Thank you for choosing Kalashwet.

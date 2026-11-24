@@ -2,14 +2,16 @@ import uuid
 import requests
 from decimal import Decimal
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from catalog.models import Variant
-from pricing.services import compute_variant_price
+from pricing.services import compute_variant_price, evaluate_coupon, get_shipping_fee
 from .models import Order
+from .notifications import send_order_email
 from .serializer import OrderSerializer
 
 
@@ -54,14 +56,18 @@ class OrderListCreateView(APIView):
             subtotal += price * quantity
 
             product = variant.product
+            gallery_image = product.gallery.first()
             images = product.images if isinstance(product.images, list) and product.images else []
+            order_image = gallery_image.image.url if gallery_image else (images[0] if images else None)
+            if order_image and not order_image.startswith(('http://', 'https://')):
+                order_image = request.build_absolute_uri(order_image)
 
             order_items.append({
                 'variant_id': str(variant.pk),
                 'product_slug': product.slug,
                 'category': product.category.slug,
                 'name': product.name,
-                'image': images[0] if images else None,
+                'image': order_image,
                 'metal': variant.metal,
                 'purity': variant.purity,
                 'size': variant.size,
@@ -70,11 +76,16 @@ class OrderListCreateView(APIView):
             })
 
         discount = 0
-        if coupon_code == 'WELCOME5':
-            discount = int(subtotal * 0.05)
+        applied_coupon = ''
+        if coupon_code:
+            try:
+                coupon, discount = evaluate_coupon(coupon_code, subtotal)
+                applied_coupon = coupon.code
+            except ValueError as exc:
+                return Response({'coupon_code': [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
 
-        total = subtotal - discount
-        shipping = 0  # free insured delivery for all fine jewellery
+        shipping = get_shipping_fee()
+        total = subtotal - discount + shipping
 
         # Reject COD above 50,000 INR
         if payment_method == 'cod' and total > 50000:
@@ -106,15 +117,24 @@ class OrderListCreateView(APIView):
             user=request.user,
             number=order_number,
             status=order_status,
+            source=Order.Source.ONLINE_STORE,
             items=order_items,
             subtotal=subtotal,
             discount=discount,
+            coupon_code=applied_coupon,
             shipping=shipping,
             total=total,
             shipping_address=shipping_address,
             payment_method=payment_method,
             razorpay_order_id=razorpay_order_id,
+            status_history=[{
+                'status': order_status,
+                'label': order_status.replace('_', ' ').title(),
+                'changed_at': timezone.now().isoformat(),
+                'changed_by': request.user.name or request.user.email or 'Customer',
+            }],
         )
+        send_order_email(order, event='placed')
 
         res_data = OrderSerializer(order).data
         if razorpay_order_id:
@@ -133,3 +153,29 @@ class OrderDetailView(generics.RetrieveAPIView):
         if user.is_staff:
             return Order.objects.all()
         return Order.objects.filter(user=user)
+
+
+class CancelOrderView(APIView):
+    """Cancel the signed-in customer's order before fulfilment begins."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        with transaction.atomic():
+            order = Order.objects.select_for_update().filter(pk=pk, user=request.user).first()
+            if not order:
+                return Response({'detail': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
+            if order.status not in (Order.Status.PENDING_PAYMENT, Order.Status.CONFIRMED):
+                return Response({'detail': 'This order can no longer be cancelled online because fulfilment has progressed.'}, status=status.HTTP_409_CONFLICT)
+            if order.razorpay_payment_id:
+                return Response({'detail': 'Payment has already been captured. Please contact support to request cancellation and a refund.'}, status=status.HTTP_409_CONFLICT)
+
+            order.status = Order.Status.CANCELLED
+            order.status_history = [*(order.status_history or []), {
+                'status': Order.Status.CANCELLED,
+                'label': 'Cancelled by customer',
+                'changed_at': timezone.now().isoformat(),
+                'changed_by': request.user.name or request.user.email or 'Customer',
+            }]
+            order.save(update_fields=['status', 'status_history', 'updated_at'])
+            transaction.on_commit(lambda: send_order_email(order, event='status'))
+        return Response(OrderSerializer(order).data)

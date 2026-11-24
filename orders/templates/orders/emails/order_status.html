@@ -1,0 +1,24 @@
+{% extends "orders/emails/base.html" %}
+{% block content %}
+<p style="margin:0 0 8px;color:#9b7a43;font-size:10px;font-weight:bold;letter-spacing:2px;text-transform:uppercase">Order update</p>
+<h1 style="margin:0 0 14px;color:#17324f;font-family:Georgia,serif;font-size:26px;font-weight:normal">Your order is {{ status_label }}</h1>
+<p style="margin:0 0 20px;font-size:14px;line-height:1.65">Hello {{ customer_name }}, {{ intro }}</p>
+<div style="padding:14px 16px;border:1px solid #e8e3da;border-radius:8px;background:#fcfbf9;font-size:13px;line-height:1.8">
+  <strong>Order number:</strong> {{ order.number }}<br>
+  <strong>Current status:</strong> {{ status_label }}<br>
+  <strong>Payment:</strong> {{ payment_label }}<br>
+  <strong>Order total:</strong> {{ total_display }}
+</div>
+<h2 style="margin:25px 0 10px;color:#17324f;font-family:Georgia,serif;font-size:18px;font-weight:normal">Order items</h2>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+  {% for item in items %}
+  <tr>
+    <td width="72" style="padding:11px 0;border-bottom:1px solid #eee">{% if item.image %}<img src="{{ item.image }}" width="58" height="58" alt="{{ item.name }}" style="display:block;border-radius:6px;object-fit:cover;background:#f4f2ef">{% endif %}</td>
+    <td style="padding:11px 10px;border-bottom:1px solid #eee;color:#344257;font-size:13px;line-height:1.5"><strong>{{ item.name }}</strong><br>Qty {{ item.quantity }} · {{ item.variant_description }}</td>
+    <td align="right" style="padding:11px 0;border-bottom:1px solid #eee;font-size:13px;white-space:nowrap">{{ item.line_total_display }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<h2 style="margin:24px 0 8px;color:#17324f;font-family:Georgia,serif;font-size:18px;font-weight:normal">Delivery address</h2>
+<p style="margin:0;color:#586577;font-size:13px;line-height:1.65">{% for line in address_lines %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% empty %}Address not available{% endfor %}</p>
+{% endblock %}

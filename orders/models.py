@@ -4,6 +4,10 @@ from user.models import TimeStampedModel
 
 
 class Order(TimeStampedModel):
+    class Source(models.TextChoices):
+        ONLINE_STORE = 'online_store', 'Online store'
+        DRAFT_ORDER = 'draft_order', 'Draft order'
+
     class Status(models.TextChoices):
         PENDING_PAYMENT = 'pending_payment', 'Pending Payment'
         CONFIRMED = 'confirmed', 'Confirmed'
@@ -16,9 +20,12 @@ class Order(TimeStampedModel):
     )
     number = models.CharField(max_length=50, unique=True)
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING_PAYMENT)
+    source = models.CharField(max_length=20, choices=Source.choices, default=Source.ONLINE_STORE)
+    status_history = models.JSONField(default=list, blank=True)
     items = models.JSONField(default=list)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    coupon_code = models.CharField(max_length=30, blank=True, default='')
     shipping = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     shipping_address = models.JSONField(default=dict)

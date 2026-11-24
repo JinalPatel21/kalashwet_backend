@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Collection, DiamondCut, FeaturedProduct, FounderProfile, GiftGuide, HomeBanner, JewelleryVideo, LatestInsight, Product, ProductMedia, Stone, Variant
+from .models import BrandDifference, Category, Collection, DiamondCut, FeaturedProduct, FounderProfile, GiftGuide, HomeBanner, InstagramPost, InstagramProfile, JewelleryVideo, LatestInsight, NavigationFeature, Product, ProductMedia, Stone, StoreFAQ, Variant
 
 
 @admin.register(Category)
@@ -114,3 +114,45 @@ class LatestInsightAdmin(admin.ModelAdmin):
     list_editable = ('is_active', 'sort_order')
     search_fields = ('title', 'excerpt')
     ordering = ('sort_order', '-created_at')
+
+
+@admin.register(BrandDifference)
+class BrandDifferenceAdmin(admin.ModelAdmin):
+    list_display = ('title', 'is_active', 'sort_order', 'updated_at')
+    list_filter = ('is_active',)
+    list_editable = ('is_active', 'sort_order')
+    search_fields = ('title', 'subtitle')
+    ordering = ('sort_order', 'title')
+
+
+@admin.register(InstagramProfile)
+class InstagramProfileAdmin(admin.ModelAdmin):
+    list_display = ('handle', 'profile_url', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('handle',)
+
+
+@admin.register(InstagramPost)
+class InstagramPostAdmin(admin.ModelAdmin):
+    list_display = ('alt_text', 'post_url', 'is_active', 'sort_order', 'updated_at')
+    list_filter = ('is_active',)
+    list_editable = ('is_active', 'sort_order')
+    search_fields = ('alt_text',)
+    ordering = ('sort_order', '-created_at')
+
+
+@admin.register(StoreFAQ)
+class StoreFAQAdmin(admin.ModelAdmin):
+    list_display = ('question', 'is_active', 'sort_order', 'updated_at')
+    list_filter = ('is_active',)
+    list_editable = ('is_active', 'sort_order')
+    search_fields = ('question', 'answer')
+    ordering = ('sort_order', 'id')
+
+
+@admin.register(NavigationFeature)
+class NavigationFeatureAdmin(admin.ModelAdmin):
+    list_display = ('title', 'is_active', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('title', 'eyebrow')
+    fields = ('eyebrow', 'title', 'cta', 'link', 'image', 'is_active')

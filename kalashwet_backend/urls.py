@@ -13,6 +13,7 @@ urlpatterns = [
     # Customer storefront and management APIs under v1/
     path('v1/', include('user.urls')),
     path('v1/', include('catalog.urls')),
+    path('v1/admin/', include('catalog.admin_api')),
     path('v1/', include('pricing.urls')),
     path('v1/', include('orders.urls')),
     path('v1/', include('payments.urls')),

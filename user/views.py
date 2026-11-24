@@ -31,8 +31,8 @@ class ThrottledTokenRefreshView(TokenRefreshView):
     throttle_scope = 'login'
 
 
-class MeView(generics.RetrieveAPIView):
-    """GET /v1/me/ - who am I and what may I do.
+class MeView(generics.RetrieveUpdateAPIView):
+    """GET/PATCH /v1/me/ - read or update the signed-in user's own profile.
 
     Deliberately IsAuthenticated rather than HasModulePermission: reading
     your own rights cannot itself require a right. Gating this on the `user`
@@ -42,6 +42,12 @@ class MeView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = MeSerializer
     filter_backends = []
+
+    def get_serializer(self, *args, **kwargs):
+        # Profile edits are partial so a customer can update one field at a time.
+        if self.request.method == 'PATCH':
+            kwargs.setdefault('partial', True)
+        return super().get_serializer(*args, **kwargs)
 
     def get_object(self):
         return self.request.user

@@ -52,8 +52,9 @@ class UserSerializer(MongoModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'name', 'email', 'password', 'role', 'token', 'created_at', 'updated_at']
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = ['id', 'first_name', 'last_name', 'name', 'email', 'phone', 'is_active', 'password', 'role', 'token', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'token']
+        extra_kwargs = {'password': {'write_only': True, 'required': False}, 'name': {'required': False}}
 
     def get_token(self, obj):
         request = self.context.get('request')
@@ -64,6 +65,9 @@ class UserSerializer(MongoModelSerializer):
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
         user = super().update(instance, validated_data)
+        if 'first_name' in validated_data or 'last_name' in validated_data:
+            user.name = f'{user.first_name} {user.last_name}'.strip()
+            user.save(update_fields=['name'])
         if password:
             user.set_password(password)
             user.save(update_fields=['password'])
@@ -86,6 +90,14 @@ class MeSerializer(MongoModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'first_name', 'last_name', 'name', 'email', 'phone', 'is_active', 'is_staff', 'is_superuser', 'role', 'permissions']
+        read_only_fields = ['id', 'name', 'is_active', 'is_staff', 'is_superuser', 'role', 'permissions']
+
+    def update(self, instance, validated_data):
+        user = super().update(instance, validated_data)
+        # Keep the legacy display-name field consistent with editable names.
+        user.name = f'{user.first_name} {user.last_name}'.strip()
+        user.save(update_fields=['name'])
+        return user
 
     def get_permissions(self, obj):
         return permission_matrix(obj)

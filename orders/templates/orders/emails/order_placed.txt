@@ -1,0 +1,23 @@
+KALASHWET — ORDER CONFIRMATION
+
+Thank you, {{ customer_name }}.
+{{ intro }}
+
+Order number: {{ order.number }}
+Status: {{ status_label }}
+Payment: {{ payment_label }}
+
+YOUR JEWELLERY
+{% for item in items %}- {{ item.name }} × {{ item.quantity }} ({{ item.variant_description }}) — {{ item.line_total_display }}
+{% endfor %}
+Subtotal: {{ subtotal_display }}
+Discount: {{ discount_display }}
+Shipping: {{ shipping_display }}
+Total: {{ total_display }}
+
+DELIVERY ADDRESS
+{% for line in address_lines %}{{ line }}
+{% empty %}Address not available
+{% endfor %}
+
+Thank you for choosing Kalashwet.

@@ -6,7 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from pricing.services import compute_variant_price
-from .models import Category, Collection, DiamondCut, FeaturedProduct, FounderProfile, GiftGuide, HomeBanner, JewelleryVideo, LatestInsight, Product
+from .models import BrandDifference, Category, Collection, DiamondCut, FeaturedProduct, FounderProfile, GiftGuide, HomeBanner, InstagramPost, InstagramProfile, JewelleryVideo, LatestInsight, NavigationFeature, Product, StoreFAQ
 from .serializer import (
     CategorySerializer, CollectionSerializer,
     ProductSummarySerializer, ProductDetailSerializer
@@ -86,6 +86,41 @@ class HomeView(APIView):
             }
             for item in LatestInsight.objects.filter(is_active=True)[:8]
         ]
+        brand_differences = [
+            {
+                'id': str(item.pk),
+                'title': item.title,
+                'subtitle': item.subtitle,
+                'image': request.build_absolute_uri(item.image.url),
+            }
+            for item in BrandDifference.objects.filter(is_active=True)[:8]
+        ]
+        instagram_profile = InstagramProfile.objects.filter(is_active=True).first()
+        instagram = {
+            'handle': instagram_profile.handle,
+            'profile_url': instagram_profile.profile_url,
+        } if instagram_profile else None
+        instagram_posts = [
+            {
+                'id': str(item.pk),
+                'image': request.build_absolute_uri(item.image.url),
+                'alt_text': item.alt_text,
+                'link': item.post_url or (instagram_profile.profile_url if instagram_profile else ''),
+            }
+            for item in InstagramPost.objects.filter(is_active=True)[:12]
+        ]
+        faqs = [
+            {'id': str(item.pk), 'question': item.question, 'answer': item.answer}
+            for item in StoreFAQ.objects.filter(is_active=True)[:20]
+        ]
+        navigation_feature = NavigationFeature.objects.filter(is_active=True).first()
+        navigation_feature_data = {
+            'eyebrow': navigation_feature.eyebrow,
+            'title': navigation_feature.title,
+            'cta': navigation_feature.cta,
+            'link': navigation_feature.link,
+            'image': request.build_absolute_uri(navigation_feature.image.url) if navigation_feature.image else None,
+        } if navigation_feature else None
 
         return Response({
             'banners': banners,
@@ -96,6 +131,11 @@ class HomeView(APIView):
             'jewellery_videos': jewellery_videos,
             'founder': founder_data,
             'latest_insights': latest_insights,
+            'brand_differences': brand_differences,
+            'instagram': instagram,
+            'instagram_posts': instagram_posts,
+            'faqs': faqs,
+            'navigation_feature': navigation_feature_data,
             'bestsellers': ProductSummarySerializer(bestsellers, many=True, context={'request': request}).data,
             'new_arrivals': ProductSummarySerializer(new_arrivals, many=True, context={'request': request}).data,
         })

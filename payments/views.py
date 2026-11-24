@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+from django.utils import timezone
 
 from django.conf import settings
 from rest_framework import status
@@ -7,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from orders.models import Order
+from orders.notifications import send_order_email
 from orders.serializer import OrderSerializer
 from .models import Payment
 
@@ -37,6 +39,12 @@ class RazorpayVerifyView(APIView):
 
         order.status = Order.Status.CONFIRMED
         order.razorpay_payment_id = payment_id
+        order.status_history = [*(order.status_history or []), {
+            'status': Order.Status.CONFIRMED,
+            'label': 'Confirmed',
+            'changed_at': timezone.now().isoformat(),
+            'changed_by': 'Payment confirmation',
+        }]
         order.save()
 
         Payment.objects.create(
@@ -48,5 +56,6 @@ class RazorpayVerifyView(APIView):
             amount=order.total,
             raw_response={'razorpay_order_id': razorpay_order_id, 'razorpay_payment_id': payment_id},
         )
+        send_order_email(order, event='status')
 
         return Response(OrderSerializer(order).data)
