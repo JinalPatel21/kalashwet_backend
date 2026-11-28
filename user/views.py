@@ -11,7 +11,7 @@ from kalashwet_backend.setting.filters import filterable_fields, searchable_fiel
 from kalashwet_backend.setting.mixins import StatusMessageUpdateMixin
 from kalashwet_backend.setting.permissions import HasModulePermission
 from .choice import PermissionModule
-from .models import Address, OtpCode
+from .models import Address, OtpCode, User
 from .serializer import *
 
 
@@ -176,6 +176,28 @@ class UserCreateView(generics.CreateAPIView):
     permission_classes = [HasModulePermission]
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+
+class StaffAccountCreateView(APIView):
+    """POST /v1/staff-users/ - create a central-auth staff login."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_superuser:
+            return Response({'detail': 'Only a central superuser can create staff accounts.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = StaffAccountCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response({
+            'id': str(user.pk),
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'name': user.name,
+            'email': user.email,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser,
+            'is_active': user.is_active,
+        }, status=status.HTTP_201_CREATED)
 
 
 class UserDetailView(StatusMessageUpdateMixin, generics.RetrieveUpdateDestroyAPIView):

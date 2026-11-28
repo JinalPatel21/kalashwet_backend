@@ -9,6 +9,8 @@ class MetalRate(TimeStampedModel):
         P22K = '22K', '22K'
         P18K = '18K', '18K'
         P14K = '14K', '14K'
+        P10K = '10K', '10K'
+        P9K = '9K', '9K'
         PT950 = 'PT950', 'PT950'
         S925 = 'S925', 'S925'
 

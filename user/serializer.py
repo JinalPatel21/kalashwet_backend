@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
@@ -72,6 +73,38 @@ class UserSerializer(MongoModelSerializer):
             user.set_password(password)
             user.save(update_fields=['password'])
         return user
+
+
+class StaffAccountCreateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default='')
+    email = serializers.EmailField()
+    password = serializers.CharField(min_length=12, write_only=True, trim_whitespace=False)
+
+    def validate_email(self, value):
+        normalized = User.objects.normalize_email(value.strip()).lower()
+        if User.objects.filter(email__iexact=normalized).exists():
+            raise serializers.ValidationError('An account already exists with this email address.')
+        return normalized
+
+    def validate(self, attrs):
+        candidate = User(email=attrs['email'], first_name=attrs['first_name'], last_name=attrs['last_name'])
+        validate_password(attrs['password'], candidate)
+        return attrs
+
+    def create(self, validated_data):
+        first_name = validated_data['first_name'].strip()
+        last_name = validated_data.get('last_name', '').strip()
+        return User.objects.create_user(
+            email=validated_data['email'],
+            name=f'{first_name} {last_name}'.strip(),
+            first_name=first_name,
+            last_name=last_name,
+            password=validated_data['password'],
+            is_staff=True,
+            is_superuser=False,
+            is_active=True,
+        )
 
 
 class UseDetailSerializer(MongoModelSerializer):

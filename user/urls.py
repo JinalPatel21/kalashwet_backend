@@ -10,6 +10,7 @@ urlpatterns = [
     path('auth/otp/send/', views.SendOtpView.as_view(), name='send-otp'),
     path('auth/otp/verify/', views.VerifyOtpView.as_view(), name='verify-otp'),
     path('me/', views.MeView.as_view(), name='me'),
+    path('staff-users/', views.StaffAccountCreateView.as_view(), name='staff-user-create'),
 
     # Customer addresses
     path('addresses/', views.AddressListCreateView.as_view(), name='address-list-create'),

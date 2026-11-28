@@ -7,6 +7,8 @@ DEFAULT_RATES = {
     '22K': Decimal('11730'),
     '18K': Decimal('9600'),
     '14K': Decimal('7470'),
+    '10K': Decimal('12800') * Decimal('0.42'),
+    '9K': Decimal('12800') * Decimal('0.38'),
     'PT950': Decimal('4200'),
     'S925': Decimal('110'),
 }
